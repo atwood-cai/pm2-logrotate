@@ -43,6 +43,8 @@ var durationLegend = {
 
 var gl_file_list = [];
 
+var processing_files = {};
+
 function get_limit_size() {
   if (conf.max_size == '')
     return (1024 * 1024 * 10);
@@ -82,6 +84,12 @@ function proceed(file) {
   var final_name = file.substr(0, file.length - 4) + '__'
     + moment().subtract(1, durationLegend[INTERVAL_UNIT]).format(DATE_FORMAT) + '.log';
 
+    if (processing_files[file]) {
+      return;
+    }
+
+    processing_files[file] = true;
+
     function pipeNew(final_name) {
         // if log-file is big, pipe duration will longer than interval-time
         var readStream = fs.createReadStream(file);
@@ -94,6 +102,11 @@ function proceed(file) {
             if (RETAIN !== undefined) {
                 delete_old(file);
             }
+        });
+
+        writeStream.on('finish', function () {
+          processing_files[file] = false;
+          delete processing_files[file];
         });
     }
 
@@ -183,16 +196,12 @@ pm2.connect(function(err) {
       proceed_file(process.env.HOME + '/.pm2/pm2.log', false);
       proceed_file(process.env.HOME + '/.pm2/agent.log', false);
 
-      if (is_it_time_yet())
-        apps.forEach(function(app) {
-          if (WHITE_LIST && WHITE_LIST.indexOf(app.name) > -1) return;
-          proceed_app(app, true)
-        });
-      else
-        apps.forEach(function(app) {
-          if (WHITE_LIST && WHITE_LIST.indexOf(app.name) > -1) return;
-          proceed_app(app, false)
-        });
+      // add no-need-cut app
+      var force = is_it_time_yet();
+      apps.forEach(function(app) {
+        if (WHITE_LIST.indexOf(app.name) > -1) return;
+        proceed_app(app, force);
+      });
     });
   };
 
