@@ -84,6 +84,7 @@ function proceed(file) {
   var final_name = file.substr(0, file.length - 4) + '__'
     + moment().subtract(1, durationLegend[INTERVAL_UNIT]).format(DATE_FORMAT) + '.log';
 
+    /*
     if (processing_files[file]) {
       return;
     }
@@ -109,6 +110,7 @@ function proceed(file) {
           delete processing_files[file];
         });
     }
+    */
 
     //app-pid__2016-06-16-14-44
     var fileName = final_name.slice(final_name.lastIndexOf('/') + 1, final_name.length).replace('.log', '');
@@ -133,20 +135,20 @@ function proceed(file) {
             final_name = path + '/' + fileName + '__' + (versions[0] + 1) + '.log';
         }
 
-        pipeNew(final_name);
+        backLogFile(file, final_name);
     });
 
-    /*
-    fs.rename(file, final_name, function() {
-        fs.writeFile(file, '', 'utf8', function() {
-            pm2.flush()
+    function backLogFile(file, final_name) {
+        fs.rename(file, final_name, function() {
+            pm2.reloadLogs(function(e, msg) {
+                console.log(e, msg);
+            });
             console.log('"' + final_name + '" has been created');
             if (RETAIN !== undefined) {
                 delete_old(file);
             }
-        })
-    });
-    */
+        });
+    }
 }
 
 function proceed_file(file, force) {
